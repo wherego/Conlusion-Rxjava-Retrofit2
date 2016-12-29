@@ -7,39 +7,45 @@ import android.view.View;
 import android.widget.Button;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 import io.reactivex.Observable;
 import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
+import okhttp3.Interceptor;
 import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 /*
 * Rxjava+Retrofit
 *
 * Retrofit可用转换器：
 *
-* Gson: com.squareup.retrofit2:converter-gson
+* Gson: com.squareup.retrofit2:converter-gson(Json)
 *
-* Jackson: com.squareup.retrofit2:converter-jackson
+* Jackson: com.squareup.retrofit2:converter-jackson(Json etc)
 *
 * Moshi: com.squareup.retrofit2:converter-moshi
 *
-* Protobuf: com.squareup.retrofit2:converter-protobuf
+* Protobuf: com.squareup.retrofit2:converter-protobuf(Protobuf)
 *
-* Wire: com.squareup.retrofit2:converter-wire
+* Wire: com.squareup.retrofit2:converter-wire(Wire)
 *
-* Simple XML: com.squareup.retrofit2:converter-simplexml
+* Simple XML: com.squareup.retrofit2:converter-simplexml(XML)
 *
-* Scalars (primitives, boxed, and String): com.squareup.retrofit2:converter-scalars
+* Scalars (primitives, boxed, and String): com.squareup.retrofit2:converter-scalars(String)
 * */
 public class MainActivity extends AppCompatActivity {
 
@@ -64,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
     public void doGet() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://192.168.15.12:8080/xxxxx")//服务器地址
-                .addConverterFactory(GsonConverterFactory.create())//添加数据格式转换工具
+                .addConverterFactory(GsonConverterFactory.create())//添加数据格式转换工具(Resonse----->Json)
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())//Rxjava的适配工具
                 .build();
         ApiGet apiGet = retrofit.create(ApiGet.class);
@@ -97,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
     public void doPost() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://192.168.15.12:8080/xxxxx")//服务器地址
-                .addConverterFactory(GsonConverterFactory.create())//添加数据格式转换工具
+                .addConverterFactory(GsonConverterFactory.create())//添加数据格式转换工具(Resonse----->Json)
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())//Rxjava的适配工具
                 .build();
         File file1 = new File(Environment.getExternalStorageDirectory(), "01.jpg");//获取图片
@@ -120,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onNext(Imgs userInfo) {
+                    public void onNext(Imgs response) {
                     }
 
                     @Override
@@ -139,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
     public void dynamicPath() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://192.168.15.12:8080/xxxxx")//服务器地址
-                .addConverterFactory(null)//添加数据格式转换工具
+                .addConverterFactory(ScalarsConverterFactory.create())//添加数据格式转换工具(Resonse----->String)
                 .addCallAdapterFactory(RxJavaCallAdapterFactory.create())//Rxjava的适配工具
                 .build();
         ApiDynamicPath apiDynamicPath = retrofit.create(ApiDynamicPath.class);
@@ -152,7 +158,63 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onNext(String userInfo) {
+                    public void onNext(String response) {
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                    }
+
+                    @Override
+                    public void onComplete() {
+                    }
+                });
+    }
+
+    /*
+    * 统一添加请求头方法2(单一API添加请求头方法1见ApiAddHeader.class)------
+    * */
+    public void addHeader() {
+        /*
+        * 添加log
+        **/
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+        /*
+        * 添加统一的header
+        * */
+        OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new Interceptor() {
+            @Override
+            public okhttp3.Response intercept(Chain chain) throws IOException {
+                Request request = chain.request()
+                        .newBuilder()
+                        .addHeader("mac", "f8:00:ea:10:45")
+                        .addHeader("uuid", "gdeflatfgfg5454545e")
+                        .addHeader("userId", "Fea2405144")
+                        .addHeader("netWork", "wifi")
+                        .build();
+                return chain.proceed(request);
+            }
+        }).addInterceptor(logging)//添加log
+                .build();
+        //----------------------------------------------
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("http://192.168.15.12:8080/xxxxx")//服务器地址
+                .addConverterFactory(ScalarsConverterFactory.create())//添加数据格式转换工具(Resonse----->String)
+                .addCallAdapterFactory(RxJavaCallAdapterFactory.create())//Rxjava的适配工具
+                .client(client)//--------------添加OkHttpClient
+                .build();
+        ApiAddHeader apiAddHeader = retrofit.create(ApiAddHeader.class);
+        Observable<String> observable = apiAddHeader.getParse("请求参数");//参数
+        observable.subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Observer<String>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                    }
+
+                    @Override
+                    public void onNext(String response) {
                     }
 
                     @Override
